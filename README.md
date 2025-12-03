@@ -37,14 +37,16 @@ Analisi_AzureFunctions_2019/
 - L’analisi può essere eseguita avviando il notebook Jupyter oppure lo script Python. 
 - Durante l’esecuzione il codice converte automaticamente i CSV in Parquet, analizza i tre dataset in modalità streaming, produce grafici (memoria, invocazioni, durate, trigger, serie temporali, distribuzioni log-log, CDF, analisi incrociate) e salva tutte le statistiche e i risultati nelle cartelle dedicate.
 
-## Note sulla scalabilità e performance 
+## Note sulla scalabilità e performance
 
-Il codice è stato progettato tenendo conto del fatto che il dataset originale è molto grande (in particolare le invocations, con 1440 colonne di minuti per file). Per permettere l’esecuzione anche su PC meno potenti, il progetto utilizza:
-    - PyArrow Dataset (lettura a batch),
-    - conversione CSV → Parquet,
-    - aggregazioni incrementali,
-    
-    - nessun caricamento completo in memoria.
+Il codice è stato progettato tenendo conto del fatto che il dataset originale è molto grande (in particolare le invocations, con 1440 colonne di minuti per file).
+Per permettere l’esecuzione anche su PC meno potenti, il progetto utilizza:
+
+- PyArrow Dataset (lettura a batch)
+- Conversione CSV → Parquet
+- Aggregazioni incrementali
+- Nessun caricamento completo in memoria
+
 
 ## Output generati
 
