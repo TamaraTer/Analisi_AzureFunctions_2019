@@ -65,9 +65,10 @@ Analisi_AzureFunctions_2019/
 
 ## Esecuzione
 
-Per avviare il progetto è consigliabile utilizzare un ambiente virtuale
+Per avviare il progetto è consigliabile utilizzare un ambiente virtuale.
 
-Le dipendenze si installano con `pip install -r requirements.txt`. 
+Le dipendenze si installano con :
+  -`pip install -r requirements.txt`. 
 
 L’analisi può essere eseguita avviando il notebook Jupyter oppure lo script Python. 
 
