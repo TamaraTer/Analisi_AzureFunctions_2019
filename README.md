@@ -9,6 +9,37 @@
 - Può essere scaricato dal link ufficiale Microsoft (https://azurepublicdatasettraces.blob.core.windows.net/azurepublicdatasetv2/azurefunctions_dataset2019/azurefunctions-dataset2019.tar.xz). 
 - Dopo aver estratto l’archivio, è sufficiente copiare le cartelle “invocations”, “durations” e “memory” all’interno della directory “data/” del progetto. Il codice rileverà automaticamente la presenza dei file e procederà alla conversione e analisi.
 
+## Struttura del dataset originale
+
+Il progetto utilizza una versione ridotta del dataset pubblico **Azure Functions Trace 2019**, rilasciato da Microsoft.  
+Il dataset contiene informazioni reali sull’utilizzo di Azure Functions, raccolte per 14 giorni nel 2019.
+
+I dati sono suddivisi in tre insiemi principali:
+
+### 1. Invocations (invocazioni delle funzioni)
+- 14 file CSV, uno per ogni giorno (`invocations_per_function_md.anon.d01.csv` … `d14.csv`)
+- Ogni file contiene:
+  - `HashOwner`: ID del proprietario dell’applicazione  
+  - `HashApp`: ID dell’applicazione  
+  - `HashFunction`: ID della funzione  
+  - `Trigger`: tipo di trigger  
+  - `1 … 1440`: numero di invocazioni per minuto (1440 colonne = 24h × 60 min)
+
+### 2. Durations (durata delle esecuzioni)
+- 14 file CSV (`function_durations_percentiles.anon.d01.csv` … `d14.csv`)
+- Contengono:
+  - durata media, minima e massima  
+  - numero di esecuzioni  
+  - percentili della durata media (weighted)
+
+### 3. Memory (memoria allocata)
+- 12 file CSV (`app_memory_percentiles.anon.d01.csv` … d12.csv)
+- Per ogni applicazione:
+  - memoria media allocata (in MB)
+  - percentili dell’allocazione media su base minuto
+
+---
+
 ## Struttura del progetto
 
 ```
@@ -27,8 +58,6 @@ Analisi_AzureFunctions_2019/
 ├── analisi_serverless.py         → versione script Python
 └── requirements.txt              → dipendenze
 ```
-
-
 
 ## Esecuzione
 
