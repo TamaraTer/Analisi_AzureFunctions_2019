@@ -1,17 +1,21 @@
 # Analisi Dataset Azure Functions 2019
 
-- Questo progetto realizza un’analisi completa del dataset pubblico Azure Functions 2019, pubblicato da Microsoft e utilizzato nel paper “Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider” (USENIX ATC 2020). 
-- L’analisi include lo studio delle invocazioni delle funzioni serverless, delle durate di esecuzione, della memoria allocata e delle relazioni incrociate tra questi insiemi di dati. Tutte le elaborazioni sono sviluppate in Python utilizzando PyArrow, Pandas, NumPy, Matplotlib e Seaborn, con un’attenzione particolare alla scalabilità: il progetto è infatti progettato per funzionare anche su macchine con RAM limitata grazie alla lettura in streaming a batch e alla conversione automatica dei CSV in formato Parquet.
+Questo progetto realizza un’analisi completa del dataset pubblico Azure Functions 2019, pubblicato da Microsoft e utilizzato nel paper “Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider” (USENIX ATC 2020). 
+
+L’analisi include lo studio delle invocazioni delle funzioni serverless, delle durate di esecuzione, della memoria allocata e delle relazioni incrociate tra questi insiemi di dati. Tutte le elaborazioni sono sviluppate in Python utilizzando PyArrow, Pandas, NumPy, Matplotlib e Seaborn, con un’attenzione particolare alla scalabilità: il progetto è infatti progettato per funzionare anche su macchine con RAM limitata grazie alla lettura in streaming a batch e alla conversione automatica dei CSV in formato Parquet.
 
 ## Dataset
 
-- Il dataset originale non è incluso per motivi di dimensione.
-- Può essere scaricato dal link ufficiale Microsoft (https://azurepublicdatasettraces.blob.core.windows.net/azurepublicdatasetv2/azurefunctions_dataset2019/azurefunctions-dataset2019.tar.xz). 
-- Dopo aver estratto l’archivio, è sufficiente copiare le cartelle “invocations”, “durations” e “memory” all’interno della directory “data/” del progetto. Il codice rileverà automaticamente la presenza dei file e procederà alla conversione e analisi.
+Il dataset originale non è incluso nel repository per motivi di dimensione ma può essere scaricato dal link ufficiale Microsoft:  
+https://azurepublicdatasettraces.blob.core.windows.net/azurepublicdatasetv2/azurefunctions_dataset2019/azurefunctions-dataset2019.tar.xz
+
+Dopo aver estratto l’archivio, è sufficiente copiare le cartelle `invocations`, `durations` e `memory` all’interno della directory `data/` del progetto.  
+Il codice rileverà automaticamente i file e procederà alla conversione e analisi.
+
 
 ## Struttura del dataset originale
 
-Il progetto utilizza una versione ridotta del dataset pubblico **Azure Functions Trace 2019**, rilasciato da Microsoft.  
+Il progetto utilizza il dataset pubblico **Azure Functions Trace 2019**, rilasciato da Microsoft.  
 Il dataset contiene informazioni reali sull’utilizzo di Azure Functions, raccolte per 14 giorni nel 2019.
 
 I dati sono suddivisi in tre insiemi principali:
@@ -33,7 +37,7 @@ I dati sono suddivisi in tre insiemi principali:
   - percentili della durata media (weighted)
 
 ### 3. Memory (memoria allocata)
-- 12 file CSV (`app_memory_percentiles.anon.d01.csv` … d12.csv)
+- 12 file CSV (`app_memory_percentiles.anon.d01.csv` … `d12.csv`)
 - Per ogni applicazione:
   - memoria media allocata (in MB)
   - percentili dell’allocazione media su base minuto
@@ -61,10 +65,13 @@ Analisi_AzureFunctions_2019/
 
 ## Esecuzione
 
-- Per avviare il progetto è consigliabile utilizzare un ambiente virtuale
-- Le dipendenze si installano con `pip install -r requirements.txt`. 
-- L’analisi può essere eseguita avviando il notebook Jupyter oppure lo script Python. 
-- Durante l’esecuzione il codice converte automaticamente i CSV in Parquet, analizza i tre dataset in modalità streaming, produce grafici (memoria, invocazioni, durate, trigger, serie temporali, distribuzioni log-log, CDF, analisi incrociate) e salva tutte le statistiche e i risultati nelle cartelle dedicate.
+Per avviare il progetto è consigliabile utilizzare un ambiente virtuale
+
+Le dipendenze si installano con `pip install -r requirements.txt`. 
+
+L’analisi può essere eseguita avviando il notebook Jupyter oppure lo script Python. 
+
+Durante l’esecuzione il codice converte automaticamente i CSV in Parquet, analizza i tre dataset in modalità streaming, produce grafici (memoria, invocazioni, durate, trigger, serie temporali, distribuzioni log-log, CDF, analisi incrociate) e salva tutte le statistiche e i risultati nelle cartelle dedicate.
 
 ## Note sulla scalabilità e performance
 
