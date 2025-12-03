@@ -11,20 +11,23 @@
 
 ## Struttura del progetto
 
-project/
+```
+Analisi_AzureFunctions_2019/
 │
-├── data/                 → cartella che deve contenere i CSV originali
-│   ├── invocations/      → (vuota all’inizio)
-│   ├── durations/        → (vuota all’inizio)
-│   └── memory/           → (vuota all’inizio)
+├── data/                         → contiene i CSV originali e le sottocartelle
+│   ├── invocations/              → (vuota all’inizio)
+│   ├── durations/                → (vuota all’inizio)
+│   └── memory/                   → (vuota all’inizio)
 │
-├── parquet/              → generata automaticamente (CSV convertiti)
-├── figs/                 → grafici prodotti dall’analisi
-├── output/               → risultati numerici, CSV riassuntivi
+├── parquet/                      → generata automaticamente (CSV convertiti)
+├── figs/                         → grafici prodotti dall’analisi
+├── output/                       → risultati numerici, CSV riassuntivi
 │
-├── analisi_serverless.ipynb     → notebook principale
-├── analisi_serverless.py        → versione script
-└── requirements.txt             → dipendenze 
+├── analisi_serverless.ipynb      → notebook principale
+├── analisi_serverless.py         → versione script Python
+└── requirements.txt              → dipendenze
+```
+
 
 
 ## Esecuzione
