@@ -15,11 +15,8 @@ from collections import Counter, defaultdict
 
 print("Librerie importate")
 
-# ----------------------------------------------
-# TEMA GRAFICO UNIFICATO PER TUTTI I GRAFICI
-# ----------------------------------------------
+# Impostazioni grafiche uniformi per rendere tutte le figure coerenti e leggibili.
 
-# Font e dimensioni testi
 plt.rcParams.update({
     "figure.figsize": (10, 6),
     "axes.titlesize": 14,
@@ -36,18 +33,15 @@ plt.rcParams.update({
     "grid.linewidth": 0.5,
 })
 
-# Stile generale dei grafici
 sns.set_theme(
-    style="whitegrid",   # sfondo chiaro professionale
-    palette="tab10",     # palette uniforme per TUTTI i grafici
+    style="whitegrid",  
+    palette="tab10",    
     font_scale=1.1
 )
 
-# Spessore linee nei lineplot
 plt.rcParams["lines.linewidth"] = 2
 
 print("Tema grafico unificato applicato")
-
 
 # Directory dati
 DATA_DIR = "data"
@@ -55,12 +49,18 @@ PARQUET_DIR = "parquet"
 FIGS_DIR = "figs"
 OUTPUT_DIR = "output"
 
-# Creazione cartelle (senza controlli ripetuti)
+# Creazione cartelle 
 os.makedirs(PARQUET_DIR, exist_ok=True)
 os.makedirs(FIGS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Funzione veloce per conversione CSV → Parquet
+# I dataset originali sono costituiti da molti file CSV di grandi dimensioni.
+# Per evitare di saturare la RAM in fase di analisi, ogni CSV viene convertito in formato Parquet, che consente:
+#   - lettura colonnare (solo le colonne necessarie),
+#   - compressione più efficiente,
+#   - streaming in batch attraverso PyArrow.
+# Questo rende il progetto scalabile.
+
 def convert_csv_to_parquet_fast(csv_dir, out_subdir):
     out_dir = os.path.join(PARQUET_DIR, out_subdir)
     os.makedirs(out_dir, exist_ok=True)
@@ -83,7 +83,6 @@ def convert_csv_to_parquet_fast(csv_dir, out_subdir):
 
     print(f"✔ Conversione completata per {csv_dir}\n")
 
-
 # Conversione dei tre dataset
 convert_csv_to_parquet_fast(os.path.join(DATA_DIR, "invocations"), "invocations")
 convert_csv_to_parquet_fast(os.path.join(DATA_DIR, "durations"),   "durations")
@@ -95,6 +94,12 @@ print("Tutti i CSV convertiti in Parquet")
 # ## 1) Caricamento parquet
 
 # %%
+# Creazione di tre dataset Arrow distinti. Arrow non carica i file in memoria ma opera in streaming. 
+# Ogni dataset corrisponde a una parte del workload:
+#   - invocations: volumi temporali minuto per minuto,
+#   - durations: tempi di esecuzione delle funzioni,
+#   - memory: profili di memoria allocata dalle app.
+
 INV_PATH = os.path.join(PARQUET_DIR, "invocations")
 DUR_PATH = os.path.join(PARQUET_DIR, "durations")
 MEM_PATH = os.path.join(PARQUET_DIR, "memory")
@@ -109,22 +114,26 @@ print("Dataset Arrow pronti")
 # ## 2) Esplorazione dei Dataset
 
 # %%
+# Funzione di ispezione: permette di verificare la struttura dei dataset
+# senza caricarli integralmente.
+# Utile per effettuare controlli preliminari sulla correttezza dei file caricati.
+
 from collections import Counter
 
 def quick_info(dataset, name, sample_rows=5):
     print(f"\n=== {name.upper()} ===")
 
-    # A) Numero righe
+    # Numero record
     n_rows = dataset.count_rows()
     print(f"Record: {n_rows:,}")
 
-    # B) Schema (prime 10 colonne)
+    # Prime 10 colonne
     schema_cols = [f"{f.name}:{f.type}" for f in dataset.schema][:10]
     print(f"Colonne (prime 10 su {len(dataset.schema)} totali):")
     for c in schema_cols:
         print(" -", c)
 
-    # C) Campione leggero (solo X righe)
+    # Campione
     sample_table = dataset.head(sample_rows)
     df_sample = sample_table.to_pandas()
     
@@ -142,21 +151,17 @@ quick_info(ds_memory,      "Memory")
 # 
 
 # %%
-# -------------------------------------------------------------------
-# Carichiamo SOLO le colonne chiave
-# -------------------------------------------------------------------
+# Estrae solamente le colonne chiave dei tre dataset (Owner, App, Function)
+# per valutare dimensione, copertura e sovrapposizione tra le tre fonti dati.
+
 inv_keys = ds_invocations.to_table(columns=["HashOwner", "HashApp", "HashFunction"])
 dur_keys = ds_durations.to_table(columns=["HashOwner", "HashApp", "HashFunction"])
 mem_keys = ds_memory.to_table(columns=["HashOwner", "HashApp"])
 
-# Conversione in pandas
 inv_df = inv_keys.to_pandas()
 dur_df = dur_keys.to_pandas()
 mem_df = mem_keys.to_pandas()
 
-# -------------------------------------------------------------------
-# Cardinalità principali
-# -------------------------------------------------------------------
 n_owners = inv_df['HashOwner'].nunique()
 n_apps   = inv_df['HashApp'].nunique()
 n_funcs  = inv_df['HashFunction'].nunique()
@@ -166,9 +171,10 @@ print(f"- Owner totali:    {n_owners:,}")
 print(f"- App totali:      {n_apps:,}")
 print(f"- Funzioni totali: {n_funcs:,}\n")
 
-# -------------------------------------------------------------------
-# Copertura dataset
-# -------------------------------------------------------------------
+# Verifica quali funzioni hanno il corrispondente record di durata,
+# e quali applicazioni presentano dati relativi alla memoria allocata.
+# Nota: i tre dataset non sono completamente allineati.
+
 fun_with_dur = set(inv_df["HashFunction"]) & set(dur_df["HashFunction"])
 n_fun_dur   = len(fun_with_dur)
 n_fun_no_dur = n_funcs - n_fun_dur
@@ -183,9 +189,8 @@ print(f"- Funzioni senza durations: {n_fun_no_dur:,}")
 print(f"- App con memory:          {n_app_mem:,}")
 print(f"- App senza memory:        {n_app_no_mem:,}\n")
 
-# -------------------------------------------------------------------
 # Creazione CSV riepilogativo
-# -------------------------------------------------------------------
+
 summary_df = pd.DataFrame({
     "Metric": [
         "Owner totali", "App totali", "App con memory", "App senza memory",
@@ -200,11 +205,8 @@ summary_df = pd.DataFrame({
 summary_df.to_csv(os.path.join(OUTPUT_DIR, "panorama_generale_summary.csv"),
                   index=False, sep=';', encoding='utf-8')
 
-# -------------------------------------------------------------------
-# Grafico a barre ordinato con colori pastello
-# -------------------------------------------------------------------
+# Costruzione di un riepilogo compatto delle principali dimensioni del dataset.
 
-# Ordine logico delle metriche
 ordered_metrics = [
     "Owner totali",
     "App totali", "App con memory", "App senza memory",
@@ -216,7 +218,6 @@ summary_df["Metric"] = pd.Categorical(summary_df["Metric"],
                                       ordered=True)
 summary_df = summary_df.sort_values("Metric")
 
-# Categoria logica per ogni metrica
 category_map = {
     "Owner totali": "Owners",
     "App totali": "Apps",
@@ -229,7 +230,6 @@ category_map = {
 
 summary_df["Categoria"] = summary_df["Metric"].map(category_map)
 
-# Palette
 category_palette = {
     "Owners":   "#75a4cf",  # azzurrino chiaro
     "Apps":     "#85e173",  # verdino chiaro
@@ -261,17 +261,22 @@ plt.show()
 # %%
 print("Analisi invocazioni in streaming per RAM limitata...")
 
-# Colonne chiave + 1440 temporali
+# Ogni file delle invocazioni contiene 1440 colonne numeriche, una per ogni minuto della giornata. 
+# Per ciascun batch viene calcolato il numero totale di invocazioni
+# per funzione e per applicazione sommando le 1440 colonne.
+# L'elaborazione è interamente in streaming per evitare l'allocazione di tabelle enormi.
+
 time_cols = [str(i) for i in range(1, 1441)]
 key_cols = ["HashOwner", "HashApp", "HashFunction"]
 all_cols = key_cols + time_cols
 
-# Contatori
 func_counter = Counter()
 app_counter  = Counter()
 time_series_total = np.zeros(1440, dtype=np.int64)
 
-# Elaborazione batch streaming
+# Analisi in streaming: ogni batch contiene solo una frazione dei dati,
+# permettendo di elaborare l’intero dataset senza mai caricare tutto in RAM.
+
 for batch in ds_invocations.to_batches(columns=all_cols):
     batch_df = batch.to_pandas()
     
@@ -284,9 +289,8 @@ for batch in ds_invocations.to_batches(columns=all_cols):
     # Serie temporale totale
     time_series_total += batch_df[time_cols].sum(axis=0).to_numpy()
 
-# -------------------------------------------------------------------
+
 # Top 10 funzioni più invocate
-# -------------------------------------------------------------------
 func_counts = pd.Series(func_counter).sort_values(ascending=False)
 top10_funcs = pd.DataFrame({"Function": func_counts.index[:10], "Count": func_counts.values[:10]})
 top10_funcs.to_csv(os.path.join(OUTPUT_DIR, "top10_functions.csv"), index=False, sep=';', encoding='utf-8')
@@ -298,7 +302,6 @@ plt.xlabel("Numero invocazioni")
 plt.ylabel("HashFunction")
 plt.legend([], [], frameon=False)
 
-# Valori sopra le barre
 for i, row in top10_funcs.iterrows():
     ax.text(row['Count'] + top10_funcs['Count'].max()*0.01, i, f"{row['Count']:,}", va='center')
 
@@ -311,9 +314,7 @@ print("\nTop 3 funzioni più invocate:")
 for i, row in top10_funcs.head(3).iterrows():
     print(f"{i+1}. {row['Function']} - {row['Count']:,} invocazioni")
 
-# -------------------------------------------------------------------
 # Top 10 app più invocate
-# -------------------------------------------------------------------
 app_counts = pd.Series(app_counter).sort_values(ascending=False)
 top10_apps = pd.DataFrame({"App": app_counts.index[:10], "Count": app_counts.values[:10]})
 top10_apps.to_csv(os.path.join(OUTPUT_DIR, "top10_apps.csv"), index=False, sep=';', encoding='utf-8')
@@ -325,7 +326,6 @@ plt.xlabel("Numero invocazioni")
 plt.ylabel("HashApp")
 plt.legend([], [], frameon=False)
 
-# Valori sopra le barre
 for i, row in top10_apps.iterrows():
     ax.text(row['Count'] + top10_apps['Count'].max()*0.01, i, f"{row['Count']:,}", va='center')
 
@@ -340,9 +340,8 @@ for i, row in top10_apps.head(3).iterrows():
 
 print("\nAnalisi approfondita dei trigger")
 
-# -------------------------------------------------------------------
-# Serie temporale globale (24h)
-# -------------------------------------------------------------------
+# Aggregazione dei valori dei 1440 minuti su tutte le funzioni per produrre
+# la serie temporale globale delle invocazioni nell’arco della giornata.
 minutes = np.arange(1440)
 hours = minutes / 60
 
@@ -357,10 +356,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "total_time_series.png"))
 plt.show()
 
-
-# -------------------------------------------------------------------
 # Invocazioni aggregate per ora
-# -------------------------------------------------------------------
 hourly_series = time_series_total.reshape(24, 60).sum(axis=1)
 hourly_df = pd.DataFrame({"Hour": np.arange(24), "Count": hourly_series})
 hourly_df.to_csv(os.path.join(OUTPUT_DIR, "hourly_total.csv"), index=False, sep=';', encoding='utf-8')
@@ -375,9 +371,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "hourly_total.png"))
 plt.show()
 
-# -------------------------------------------------------------------
 # Serie oraria normalizzata sulla media
-# -------------------------------------------------------------------
 hourly_norm = hourly_series / hourly_series.mean()
 
 norm_df = pd.DataFrame({
@@ -409,19 +403,23 @@ print("Analisi delle invocazioni completata. Figure e CSV salvati in 'figs/' e '
 # %%
 print("Analisi approfondita dei trigger...")
 
+# I trigger rappresentano la causa che attiva una funzione (HTTP, Timer,...).
+# Per ciascun trigger si calcola:
+#   - il numero totale di attivazioni,
+#   - la distribuzione delle invocazioni medie,
+#   - il numero di funzioni che utilizzano quel trigger.
+# L’analisi permette di identificare quali trigger dominano il workload
+# e di caratterizzare il comportamento dell’intero sistema.
+
 from collections import Counter, defaultdict
 
-# -------------------------------
 # Inizializzazione contatori
-# -------------------------------
-trigger_counter = Counter()           # Conteggio totale trigger
-trigger_durations = defaultdict(list) # Accumulo invocazioni per trigger
+trigger_counter = Counter()           
+trigger_durations = defaultdict(list) 
 
 minute_cols = [str(i) for i in range(1, 1441)]  # Colonne temporali
 
-# -------------------------------
 # Streaming batch
-# -------------------------------
 for batch in ds_invocations.to_batches(columns=["Trigger"] + minute_cols):
     df = batch.to_pandas()
     
@@ -435,21 +433,17 @@ for batch in ds_invocations.to_batches(columns=["Trigger"] + minute_cols):
     for trig, group in df.groupby("Trigger"):
         trigger_durations[trig].extend(group["TotalInvocations"].tolist())
 
-# -------------------------------
 # Serie globale dei trigger
-# -------------------------------
 all_triggers_counts = pd.Series(trigger_counter).sort_values(ascending=False)
 
-# Salvataggio CSV globale
+# Salvataggio CSV 
 all_triggers_df = pd.DataFrame({
     "Trigger": all_triggers_counts.index,
     "Count": all_triggers_counts.values
 })
 all_triggers_df.to_csv(os.path.join(OUTPUT_DIR, "all_triggers.csv"), index=False, sep=';', encoding='utf-8')
 
-# -------------------------------
 # Distribuzione dei trigger
-# -------------------------------
 plt.figure(figsize=(12,6))
 sns.histplot(all_triggers_counts.values, bins='auto', color="skyblue")
 plt.yscale("log")
@@ -461,9 +455,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "triggers_distribution_loglog.png"))
 plt.show()
 
-# -------------------------------
 # CDF dei trigger
-# -------------------------------
 plt.figure(figsize=(8,5))
 sns.ecdfplot(all_triggers_counts.values)
 plt.xscale("log")
@@ -475,9 +467,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "triggers_cdf.png"))
 plt.show()
 
-# -------------------------------
 # Top 10 trigger per invocazioni medie
-# -------------------------------
 trigger_avg = {k: np.mean(v) for k,v in trigger_durations.items() if len(v) > 0}
 top10_trigger_avg = pd.Series(trigger_avg).sort_values(ascending=False).head(10)
 
@@ -490,17 +480,12 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "top10_trigger_avg.png"))
 plt.show()
 
-# Stampa valori Top 10
 print("\nTop 10 trigger per invocazioni medie:")
 print(top10_trigger_avg)
 
-# -------------------------------
 # Distribuzione trigger per funzioni
-# -------------------------------
-
 print("\Distribuzione trigger per numero di funzioni")
 
-# Ricavo tabella HashFunction - Trigger senza duplicati
 trigger_func_df = ds_invocations.to_table(columns=["HashFunction", "Trigger"]) \
                                 .to_pandas() \
                                 .drop_duplicates()
@@ -516,7 +501,6 @@ trigger_func_count.to_csv(
     sep=';', encoding='utf-8'
 )
 
-# Grafico semplice
 plt.figure(figsize=(10,5))
 sns.barplot(
     x="Count",
@@ -543,9 +527,7 @@ print("Analisi dei trigger completata. Figure e CSV salvati in 'figs/' e 'output
 # %%
 print("Analisi delle durate in streaming per RAM limitata... ")
 
-# -------------------------------------------------------------------
 # Contatori e raccolta durate per funzione/app
-# -------------------------------------------------------------------
 func_durations = defaultdict(list)
 app_durations  = defaultdict(list)
 global_durations = []
@@ -562,9 +544,8 @@ for batch in ds_durations.to_batches(columns=key_cols + ["Average"]):
     for app, group in df.groupby("HashApp"):
         app_durations[app].extend(group["Average"].tolist())
 
-# -------------------------------------------------------------------
+
 # Statistiche globali
-# -------------------------------------------------------------------
 global_series = pd.Series(global_durations)
 stats = {
     "Median": global_series.median(),
@@ -579,10 +560,8 @@ print("Statistiche globali delle durate (ms):")
 for k,v in stats.items():
     print(f"- {k}: {v:.2f}")
     
-# -------------------------------------------------------------------
-# CDF di Average, Minimum e Maximum (Modifica 3)
-# -------------------------------------------------------------------
-
+# Le durate (Average, Minimum, Maximum) sono distribuite su più ordini di grandezza,
+# per questo la CDF viene rappresentata in scala logaritmica. 
 print("\Generazione CDF per Average, Minimum e Maximum")
 
 avg_list = []
@@ -619,9 +598,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "durations_avg_min_max_cdf.png"))
 plt.show()
 
-# -------------------------------------------------------------------
-# Percentili globali per grafico leggibile
-# -------------------------------------------------------------------
+# Percentili globali 
 percentiles = [25, 50, 75, 90, 95, 99]
 percentile_values = global_series.quantile([p/100 for p in percentiles])
 
@@ -635,9 +612,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "duration_global_percentiles_log.png"))
 plt.show()
 
-# -------------------------------------------------------------------
 # Top 10 funzioni/app più lente (mediana)
-# -------------------------------------------------------------------
 func_median = {f: pd.Series(d).median() for f,d in func_durations.items()}
 top_slowest_funcs = pd.Series(func_median).sort_values(ascending=False).head(10)
 
@@ -650,9 +625,10 @@ pd.DataFrame({"Function": top_slowest_funcs.index, "MedianDuration": top_slowest
 pd.DataFrame({"App": top_slowest_apps.index, "MedianDuration": top_slowest_apps.values})\
   .to_csv(os.path.join(OUTPUT_DIR, "top10_slowest_apps.csv"), index=False, sep=';', encoding='utf-8')
 
-# -------------------------------------------------------------------
-# Boxplot/Violin plot top 10 funzioni più lente
-# -------------------------------------------------------------------
+
+# Costruisco un DataFrame che contiene tutte le durate associate
+# alle 10 funzioni più lente. Ogni funzione viene ripetuta tante volte
+# quanto il numero di misurazioni disponibili. 
 top_funcs_df = pd.DataFrame({
     "Function": np.repeat(top_slowest_funcs.index, [len(func_durations[f]) for f in top_slowest_funcs.index]),
     "Duration": np.concatenate([func_durations[f] for f in top_slowest_funcs.index])
@@ -673,9 +649,7 @@ print("\nTop 3 funzioni più lente (mediana):")
 for i, (f, v) in enumerate(top_slowest_funcs.head(3).items(), 1):
     print(f"{i}. {f} - {v:.2f} ms")
 
-# -------------------------------------------------------------------
 # Boxplot top 10 app più lente
-# -------------------------------------------------------------------
 top_apps_df = pd.DataFrame({
     "App": np.repeat(top_slowest_apps.index, [len(app_durations[a]) for a in top_slowest_apps.index]),
     "Duration": np.concatenate([app_durations[a] for a in top_slowest_apps.index])
@@ -706,9 +680,6 @@ print("Analisi memoria allocata in streaming per RAM limitata...")
 
 from collections import defaultdict
 
-# -------------------------------
-# Colonne da leggere
-# -------------------------------
 key_cols = ["HashOwner", "HashApp"]
 mem_cols = [
     "SampleCount", "AverageAllocatedMb",
@@ -719,18 +690,21 @@ mem_cols = [
 ]
 all_cols = key_cols + mem_cols
 
-# -------------------------------
-# Strutture per accumulo
-# -------------------------------
+# Il dataset della memoria contiene diverse statistiche percentili pre-calcolate.
+# Si aggregano i valori per app, in particolar modo su:
+#   - mediana,
+#   - pct95,
+#   - pct99.
+# Questo aiuta a identificare applicazioni con comportamenti anomali
+# o profili di allocazione potenzialmente inefficienti.
+
 app_memory = defaultdict(list)
 app_pct95 = defaultdict(list)
 app_pct99 = defaultdict(list)
 app_samplec = defaultdict(list)
 global_memory = []
 
-# -------------------------------
 # Streaming dei batch
-# -------------------------------
 for batch in ds_memory.to_batches(columns=all_cols):
     df = batch.to_pandas()
     if "AverageAllocatedMb" not in df.columns:
@@ -746,9 +720,7 @@ for batch in ds_memory.to_batches(columns=all_cols):
         if "AverageAllocatedMb_pct99" in grp.columns: app_pct99[app].extend(grp["AverageAllocatedMb_pct99"].dropna().tolist())
         if "SampleCount" in grp.columns: app_samplec[app].extend(grp["SampleCount"].dropna().tolist())
 
-# -------------------------------
 # Statistiche globali memoria
-# -------------------------------
 global_series = pd.Series(global_memory)
 mem_stats = {
     "Median": global_series.median(),
@@ -763,7 +735,7 @@ print("Statistiche globali della memoria allocata (MB):")
 for k, v in mem_stats.items():
     print(f"- {k}: {v:.2f}")
 
-# Salva percentili globali
+# Salvataggio e grafico percentili globali
 percentiles = [25, 50, 75, 90, 95, 99]
 percentile_values = global_series.quantile([p/100 for p in percentiles])
 pd.DataFrame({
@@ -772,7 +744,6 @@ pd.DataFrame({
 }).to_csv(os.path.join(OUTPUT_DIR, "memory_global_percentiles.csv"),
          index=False, sep=';', encoding='utf-8')
 
-# Grafico percentili globali
 plt.figure(figsize=(8,4))
 sns.barplot(x=[f"P{p}" for p in percentiles], y=percentile_values.values, color="tab:orange")
 plt.yscale("log")
@@ -783,9 +754,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "memory_global_percentiles_log.png"))
 plt.show()
 
-# -------------------------------
 # Top 10 app per mediana e pct99
-# -------------------------------
 app_median_mem = {a: pd.Series(v).median() for a,v in app_memory.items() if len(v)>0}
 top10_apps_by_median = pd.Series(app_median_mem).sort_values(ascending=False).head(10)
 
@@ -802,9 +771,8 @@ print(top10_apps_by_median.to_string())
 print("\nTop 10 app per Pct99 memoria (MB):")
 print(top10_apps_by_pct99.to_string())
 
-# -------------------------------
-# Violin / Box plot Top10
-# -------------------------------
+
+# Violin Top10
 def build_repeated_df(series_index, source_dict, col_name):
     rows = []
     for k in series_index:
@@ -836,9 +804,8 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "top10_apps_pct99_boxplot_log.png"))
 plt.show()
 
-# -------------------------------
+
 # Distribuzione globale: istogramma + ECDF
-# -------------------------------
 plt.figure(figsize=(10,4))
 plt.hist(global_series, bins=80)
 plt.title("Istogramma globale AverageAllocatedMb (MB)")
@@ -859,9 +826,10 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "memory_global_ecdf.png"))
 plt.show()
 
-# -------------------------------
-# Anomalie e outliers
-# -------------------------------
+# Identificazione outlier rilevanti confrontando pct95 e pct99 e analizzando
+# la quantità di campioni disponibili. Vengono segnalate come anomalie: 
+# applicazioni con spike di memoria, con pochi campioni o con mediane insolitamente elevate.
+
 anomalies = []
 for app in set(list(app_memory.keys()) + list(app_pct95.keys()) + list(app_pct99.keys())):
     median_mem = pd.Series(app_memory[app]).median() if len(app_memory.get(app, []))>0 else np.nan
@@ -900,10 +868,24 @@ print("Analisi memoria completata. Figure e CSV salvati in 'figs/' e 'output/'")
 
 # %%
 print("\nAnalisi Incrociata (invocations ⨝ durations ⨝ memory)")
+# I tre dataset non possono essere uniti direttamente a causa delle elevate dimensioni complessive.
+# Per questo motivo viene costruito manualmente un campione incrociato nel seguente modo:
+#   1. estrazione delle chiavi comuni tra invocations, durations e memory;
+#   2. costruizione di due dizionari parziali (durations e memoria) tramite early-stop;
+#   3. si scorre le invocations in streaming e genero un campione di righe coerenti.
 
-# ------------------------------------------------------------
-# 1) Lettura streaming delle chiavi uniche dai dataset
-# ------------------------------------------------------------
+# Ogni record del campione contiene:
+#   - numero totale di invocazioni,
+#   - durata media della funzione,
+#   - memoria media allocata dall’app,
+#   - numero di campioni di durata raccolti.
+
+# Questo campione permette di esplorare correlazioni e pattern tra
+# intensità di utilizzo, prestazioni e footprint di memoria.
+# L’obiettivo non è ricostruire l’intero join tra dataset (troppo pesante),
+# ma ottenere un sottoinsieme statisticamente rappresentativo del workload.
+
+
 inv_keys = set()    
 dur_keys = set()
 mem_keys = set()
@@ -926,9 +908,9 @@ for batch in ds_memory.to_batches(columns=["HashOwner","HashApp"]):
     mem_keys.update(zip(df.HashOwner, df.HashApp))
 print(f"   → app in memory: {len(mem_keys):,}")
 
-# ------------------------------------------------------------
-# 2) Coverage e intersezioni
-# ------------------------------------------------------------
+
+# Coverage e intersezioni
+
 common_inv_dur = inv_keys & dur_keys
 common_all = {(o,a,f) for (o,a,f) in common_inv_dur if (o,a) in mem_keys}
 
@@ -936,13 +918,13 @@ print("\n📌 Coverage tra dataset (uniche funzioni/app accoppiabili)")
 print(f" - Invocations ∩ Durations: {len(common_inv_dur):,}")
 print(f" - Invocations ∩ Durations ∩ Memory: {len(common_all):,}")
 
-# ------------------------------------------------------------
-# 3) Costruzione campione incrociato scalabile
-# ------------------------------------------------------------
+
+# 3) Costruzione campione incrociato
+
 target_size = 30_000
 sample = []
 
-# Dizionari di lookup minimi
+# Dizionari 
 dur_dict = {}
 for batch in ds_durations.to_batches(columns=["HashOwner","HashApp","HashFunction","Average","Count"]):
     df = batch.to_pandas()
@@ -986,15 +968,11 @@ sample_df = pd.DataFrame(sample, columns=[
 ])
 print(f"   → campione creato: {len(sample_df):,} righe")
 
-# ------------------------------------------------------------=
-# 4) Statistiche incrociate
-# ------------------------------------------------------------
+
+# Statistiche incrociate
+
 print("\nSTATISTICHE INCROCIATE")
 print(sample_df.describe(percentiles=[0.5,0.9,0.99]))
-
-# ------------------------------------------------------------
-# 5) Scatter plots robusti + log-log aggiuntivi
-# ------------------------------------------------------------
 
 # Scatter lineari
 plt.figure(figsize=(7,5))
@@ -1037,9 +1015,8 @@ plt.tight_layout()
 plt.savefig(os.path.join(FIGS_DIR, "inv_vs_duration_loglog.png"))
 plt.show()
 
-# ------------------------------------------------------------
-# 6) CDF metriche principali
-# ------------------------------------------------------------
+# CDF metriche principali
+
 plt.figure(figsize=(8,5))
 for col, label in [("Invocations", "Invocations"),
                    ("AvgDuration_ms", "Avg Duration (ms)"),
