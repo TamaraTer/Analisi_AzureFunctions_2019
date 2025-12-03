@@ -98,7 +98,7 @@ Il progetto genera:
 ## Licenza del dataset
 
 Il dataset Azure Functions 2019 è rilasciato da Microsoft con licenza CC-BY.  
-Per eventuali utilizzi accademici è necessario citare il paper USENIX ATC 2020.
+Per l’attribuzione corretta, si rimanda al paper originale USENIX ATC 2020.
 
 ## Contatti
 
