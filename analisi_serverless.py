@@ -338,8 +338,6 @@ print("\nTop 3 app più invocate:")
 for i, row in top10_apps.head(3).iterrows():
     print(f"{i+1}. {row['App']} - {row['Count']:,} invocazioni")
 
-print("\nAnalisi approfondita dei trigger")
-
 # Aggregazione dei valori dei 1440 minuti su tutte le funzioni per produrre
 # la serie temporale globale delle invocazioni nell’arco della giornata.
 minutes = np.arange(1440)
