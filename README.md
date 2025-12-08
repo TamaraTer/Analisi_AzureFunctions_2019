@@ -94,7 +94,7 @@ Il progetto genera:
 - rilevamento anomalie,
 - analisi della concatenazione delle funzioni,
 - analisi incrociata invocations–durations–memory,
-- grafici 
+- grafici,
 - file CSV riepilogativi.
 
 ## Licenza del dataset
