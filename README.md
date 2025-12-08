@@ -2,7 +2,7 @@
 
 Questo progetto realizza un’analisi completa del dataset pubblico Azure Functions 2019, pubblicato da Microsoft e utilizzato nel paper “Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider” (USENIX ATC 2020). 
 
-L’analisi include lo studio delle invocazioni delle funzioni serverless, delle durate di esecuzione, della memoria allocata e delle relazioni incrociate tra questi insiemi di dati. Tutte le elaborazioni sono sviluppate in Python utilizzando PyArrow, Pandas, NumPy, Matplotlib e Seaborn, con un’attenzione particolare alla scalabilità: il progetto è infatti progettato per funzionare anche su macchine con RAM limitata grazie alla lettura in streaming a batch e alla conversione automatica dei CSV in formato Parquet.
+L’analisi include lo studio delle invocazioni delle funzioni serverless, delle durate di esecuzione, della memoria allocata, delle relazioni incrociate tra questi insiemi di dati e una ricostruzione delle pipeline applicative (catene di funzioni) a partire dalle informazioni sulle app e sui trigger. Tutte le elaborazioni sono sviluppate in Python utilizzando PyArrow, Pandas, NumPy, Matplotlib e Seaborn, con un’attenzione particolare alla scalabilità: il progetto è infatti progettato per funzionare anche su macchine con RAM limitata grazie alla lettura in streaming a batch e alla conversione automatica dei CSV in formato Parquet.
 
 ## Dataset
 
@@ -92,8 +92,9 @@ Il progetto genera:
 - distribuzioni delle durate (Average, Min, Max),
 - analisi della memoria allocata,
 - rilevamento anomalie,
-- grafici log-log, CDF, serie temporali,
+- analisi della concatenazione delle funzioni,
 - analisi incrociata invocations–durations–memory,
+- grafici 
 - file CSV riepilogativi.
 
 ## Licenza del dataset
