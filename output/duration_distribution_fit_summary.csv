@@ -1,0 +1,7 @@
+Metric;Value
+BestFitDistribution;lognorm
+Parameters;(np.float64(2.448297389891979), 0.6697703199818851, np.float64(681.5777495664515))
+KS_statistic;5.595681527315955
+NumSamplesUsed;651505
+ClippingPercentile;0.995
+CandidateDistributions;norm, lognorm, gamma, expon, weibull_min

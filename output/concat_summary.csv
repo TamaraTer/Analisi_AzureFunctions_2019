@@ -1,7 +1,0 @@
-Metric;Value
-Numero_app_totali;24274
-App_con_pipeline;6411
-Percentuale_pipeline;26.41
-Funzioni_medie_pipeline;2.9809260937628737
-Funzioni_max_pipeline;302
-Pattern_trigger_top3;{('http', 'timer'): 1091, ('queue', 'timer'): 857, ('http', 'queue', 'timer'): 668}
