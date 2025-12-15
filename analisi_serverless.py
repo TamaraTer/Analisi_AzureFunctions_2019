@@ -545,6 +545,14 @@ print("Analisi trigger completata.")
 # ## 5) Analisi delle Durate
 
 # %%
+# In questa sezione viene analizzata la distribuzione delle durate di esecuzione
+# delle funzioni serverless.
+# L’obiettivo è:
+#  - caratterizzare il comportamento globale delle durate,
+#  - identificare funzioni e applicazioni con tempi di esecuzione elevati,
+#  - studiare la forma della distribuzione (code pesanti, asimmetria),
+#  - stimare una distribuzione teorica che approssimi i dati osservati.
+
 print("Analisi delle durate in streaming per RAM limitata... ")
 
 # Contatori e raccolta durate per funzione/app
@@ -582,14 +590,16 @@ for k,v in stats.items():
 
 
 # Stima automatica della distribuzione teorica delle durate
+# Diverse distribuzioni candidate vengono confrontate tramite
+# test di Kolmogorov–Smirnov; la coda estrema è limitata (p99.5)
+# per migliorare la stabilità del fit.
+
 print("\nStima automatica della distribuzione delle durate (Average)...")
 
-# si usano solo valori positivi
+# si usano solo valori positivi e limitazione della coda estrema
 
 duration_series = pd.Series(global_durations)
 duration_series = duration_series[duration_series > 0]
-
-# per rendere il fit numericamente stabile, limitiamo la coda estrema
 
 duration_fit = duration_series.clip(upper=duration_series.quantile(0.995))
 
@@ -917,6 +927,7 @@ pd.DataFrame({
     index=False, sep=";", encoding="utf-8"
 )
 
+# I boxplot sono costruiti dopo la rimozione degli outlier tramite metodo IQR
 # Boxplot mediana
 rows = []
 for app in top10_apps_by_median.index:
@@ -1340,27 +1351,43 @@ print("RECAP DEI PRINCIPALI RISULTATI")
 
 recap_dict = {
     "Owner totali": n_owners,
-    "App totali": n_apps,
+    "Applicazioni totali": n_apps,
     "Funzioni totali": n_funcs,
-    "Funzioni con durations": n_fun_dur,
-    "Funzioni senza durations": n_fun_no_dur,
-    "App con memory": n_app_mem,
-    "App senza memory": n_app_no_mem,
-    "Minuto di picco invocazioni": f"{peak_minute//60}:{peak_minute%60}",
-    "Minuto minimo invocazioni": f"{min_minute//60}:{min_minute%60}",
-    "Top 3 funzioni più invocate": top10_funcs['Function'].head(3).tolist(),
-    "Top 3 app più invocate": top10_apps['App'].head(3).tolist(),
+    "Funzioni con dati di durata": n_fun_dur,
+    "Funzioni senza dati di durata": n_fun_no_dur,
+    "Applicazioni con dati di memoria": n_app_mem,
+    "Applicazioni senza dati di memoria": n_app_no_mem,
+
+    "Minuto di picco invocazioni": f"{peak_minute//60:02d}:{peak_minute%60:02d}",
+    "Minuto minimo invocazioni": f"{min_minute//60:02d}:{min_minute%60:02d}",
+
+    "Top 3 funzioni più invocate": top10_funcs["Function"].head(3).tolist(),
+    "Top 3 applicazioni più invocate": top10_apps["App"].head(3).tolist(),
+
     "Top 3 funzioni più lente (mediana ms)": top_slowest_funcs.head(3).to_dict(),
-    "Top 3 app più lente (mediana ms)": top_slowest_apps.head(3).to_dict(),
-    "Top 10 app per memoria mediana (MB)": top10_apps_by_median.to_dict(),
-    "Anomalie memoria rilevate": len(anomalies_df)
+    "Top 3 applicazioni più lente (mediana ms)": top_slowest_apps.head(3).to_dict(),
+
+    "Distribuzione teorica stimata delle durate": dist.model["name"],
+
+    "Top 10 applicazioni per memoria mediana (MB)": top10_apps_by_median.to_dict(),
+    "Top 10 applicazioni per memoria P99 (MB)": top10_apps_by_pct99.to_dict(),
+
+    "Numero medio di funzioni per applicazione": float(func_per_app.mean()),
+    "Numero medio di trigger per applicazione": float(num_trig_per_app.mean()),
+
+    "Dimensione campione analisi incrociata": len(sample_df)
 }
 
 for k, v in recap_dict.items():
     print(f"- {k}: {v}")
 
-# Salvataggio CSV recap
-pd.DataFrame(list(recap_dict.items()), columns=["Metric", "Value"])\
-  .to_csv(os.path.join(OUTPUT_DIR, "recap_summary.csv"), index=False, sep=';', encoding='utf-8')
+pd.DataFrame(
+    [{"Metric": k, "Value": v} for k, v in recap_dict.items()]
+).to_csv(
+    os.path.join(OUTPUT_DIR, "recap_summary.csv"),
+    index=False,
+    sep=";",
+    encoding="utf-8"
+)
 
-print("Recap salvato in output/recap_summary.csv")
+print("\nRecap finale salvato in output/recap_summary.csv")

@@ -102,7 +102,6 @@ Il progetto genera:
 - statistiche sulle invocazioni,
 - distribuzioni delle durate (Average, Min, Max),
 - analisi della memoria allocata,
-- rilevamento anomalie,
 - analisi della concatenazione delle funzioni,
 - analisi incrociata invocations–durations–memory,
 - grafici,
