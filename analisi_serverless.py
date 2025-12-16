@@ -459,9 +459,13 @@ plt.figure(figsize=(12,6))
 sns.barplot(
     x=trigger_func_count.values,
     y=trigger_func_count.index,
+    hue=trigger_func_count.index,
     orient="h",
-    palette="viridis"
+    palette="viridis",
+    dodge=False,
+    legend=False
 )
+
 plt.title("Numero di funzioni per trigger")
 plt.xlabel("Numero di funzioni")
 plt.ylabel("Trigger")
